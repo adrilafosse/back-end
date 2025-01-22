@@ -1,20 +1,20 @@
-# Utiliser l'image Python officielle
+# Use the official Python image
 FROM python:3.10-slim
 
-# Mettre à jour pip
+# Update pip
 RUN pip install --upgrade pip
 
-# Installer les dépendances flask et flask-cors
-RUN pip install Flask flask-cors
+# Install the dependencies 
+RUN pip install Flask flask-cors requests
 
-# Copier le code Flask dans le conteneur
+# Copy the Flask app code into the container
 COPY . /app
 
-# Définir le répertoire de travail
+# Set the working directory
 WORKDIR /app
 
-# Exposer le port sur lequel l'application Flask écoute
+# Expose the port the app will run on
 EXPOSE 8080
 
+# Run the Flask app
 CMD ["python", "back-end.py"]
-

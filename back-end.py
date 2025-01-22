@@ -6,8 +6,7 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-#api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
-api_key = "AIzaSyBZcicrdZrHXirde-AcHddKpoQSL7h7pD8"
+api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
 
 url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
