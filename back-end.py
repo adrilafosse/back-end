@@ -12,7 +12,7 @@ url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:
 
 @app.route('/Exemple', methods=['GET'])
 def Exemple():
-    texte = """Génère moi un JSON contenant 1 nouveau exemple de prompt en t'inspirant de ces 9 exemples, différent de "{texte}" :
+    texte = """Génère moi un JSON contenant 1 nouveau exemple de prompt en t'inspirant de ces 9 exemples :}" :
     Les présidents de la 5e république en France,
     Les présidents des Etats-Unis,
     Les rois de France,
