@@ -2,11 +2,24 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
+import firebase_admin
+from firebase_admin import credentials, firestore, db
 
 app = Flask(__name__)
 CORS(app)
 
-api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
+#api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
+#secretCode = os.getenv('SECRET_CODE')
+
+api_key = 'AIzaSyBZcicrdZrHXirde-AcHddKpoQSL7h7pD8'
+secretCode = 'monCodeSecret'
+
+cred = credentials.Certificate("./serviceAccountKey.json")
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://quizgame-1935d-default-rtdb.europe-west1.firebasedatabase.app'
+})
+
+firestore_db = firestore.client()
 
 url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
@@ -108,5 +121,56 @@ def Supprimer():
     if codeUtilisateur in codes:
         codes.remove(codeUtilisateur)
         return jsonify({"message": "Code supprimé avec succès"}), 200
+    else:
+        return jsonify({"error": "Code non trouvé"}), 404
+
+@app.route('/Score', methods=['POST'])
+def Score():
+    try:
+        data = request.get_json()
+        codeUtilisateur = data.get("code", "")
+        reponseUtilisateur = data.get("reponse","")
+        pseudo = data.get("pseudo","")
+        idPartie = data.get("valeur","")
+        compteur = data.get("compteur","")
+        timer = data.get("timer","")
+
+        if codeUtilisateur in codes:
+            if all([codeUtilisateur, reponseUtilisateur, pseudo, idPartie, compteur]):
+                ref = db.reference(f'/{idPartie}/question_reponse/{compteur}')
+                data = ref.get()
+                bonneReponse = data.get('reponse1')
+                if bonneReponse == reponseUtilisateur :
+                    try:
+                        scoreJoueur = firestore_db.collection(idPartie).document("score").get().to_dict().get(pseudo, "Le joueur n'a pas de score")
+                        if scoreJoueur == "Le joueur n'a pas de score" :
+                            data = {
+                                pseudo: 100+timer,
+                            }
+                            firestore_db.collection(idPartie).document("score").set(data)
+                            return jsonify({"message": "score mise à jour"}), 200
+                        else:
+                            data = {
+                                pseudo: scoreJoueur + 100 + timer,
+                            }
+                            firestore_db.collection(idPartie).document("score").set(data)
+                            return jsonify({"message": "score mise à jour"}), 200
+                    except Exception as e:
+                        data = {
+                                pseudo: 100 + timer,
+                            }
+                        firestore_db.collection(idPartie).document("score").set(data)
+                        return jsonify({"message": "score mise à jour"}), 200                   
+                else:
+                    print("mauvaise reponse")
+            else:
+                print("tous les champs ne sont pas remplie")
+        else:
+            print("erreur")
+
+    except Exception as e:
+        return jsonify({"error": f"Erreur de connexion à la base de données : {str(e)}"}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
