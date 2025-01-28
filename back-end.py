@@ -2,8 +2,8 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
-import firebase_admin
-from firebase_admin import credentials, firestore, db
+import firebase_admin 
+from firebase_admin import credentials, firestore, db, auth
 
 app = Flask(__name__)
 CORS(app)
@@ -31,6 +31,19 @@ def Cookie():
     codes.append(code)
 
     return code
+
+@app.route('/CookiePseudo', methods=['POST'])
+def CookiePseudo():
+    data = request.get_json()
+    pseudo = data.get("pseudo", "")
+    try:
+        # Création d'un nouvel utilisateur Firebase avec un pseudo
+        utilisateur = auth.create_user(display_name=pseudo)
+        # Générer un jeton personnalisé pour l'utilisateur
+        token = auth.create_custom_token(utilisateur.uid)
+        return jsonify({"uid": utilisateur.uid, "token": token.decode('utf-8')})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/Exemple', methods=['POST'])
 def Exemple():
@@ -128,45 +141,47 @@ def Supprimer():
 def Score():
     try:
         data = request.get_json()
-        codeUtilisateur = data.get("code", "")
         reponseUtilisateur = data.get("reponse","")
         pseudo = data.get("pseudo","")
         idPartie = data.get("valeur","")
         compteur = data.get("compteur","")
         timer = data.get("timer","")
-
-        if codeUtilisateur in codes:
-            if all([codeUtilisateur, reponseUtilisateur, pseudo, idPartie, compteur]):
-                ref = db.reference(f'/{idPartie}/question_reponse/{compteur}')
-                data = ref.get()
-                bonneReponse = data.get('reponse1')
-                if bonneReponse == reponseUtilisateur :
+        token = data.get("token","")
+        uid = data.get("uid","")
+        
+        if all([timer, reponseUtilisateur, pseudo, idPartie, compteur, token, uid]):
+            ref = db.reference(f'/{idPartie}/question_reponse/{compteur}')
+            data = ref.get()
+            bonneReponse = data.get('reponse1')
+            if bonneReponse == reponseUtilisateur :
+                verification = auth.verify_id_token(token)
+                if verification['uid'] != uid:
+                    return jsonify({"error": "UID et token ne correspondent pas."}), 403
+                else:
                     try:
-                        scoreJoueur = firestore_db.collection(idPartie).document("score").get().to_dict().get(pseudo, "Le joueur n'a pas de score")
+                        scoreJoueur = firestore_db.collection(idPartie).document("score").get().to_dict().get(pseudo, "Le joueur n'a pas de score")  
                         if scoreJoueur == "Le joueur n'a pas de score" :
                             data = {
                                 pseudo: 100+timer,
                             }
-                            firestore_db.collection(idPartie).document("score").set(data)
+                            firestore_db.collection(idPartie).document("score").update(data)
                             return jsonify({"message": "score mise à jour"}), 200
                         else:
                             data = {
                                 pseudo: scoreJoueur + 100 + timer,
                             }
-                            firestore_db.collection(idPartie).document("score").set(data)
+                            firestore_db.collection(idPartie).document("score").update(data)
                             return jsonify({"message": "score mise à jour"}), 200
                     except Exception as e:
                         data = {
-                                pseudo: 100 + timer,
-                            }
+                            pseudo: 100 + timer,
+                        }
                         firestore_db.collection(idPartie).document("score").set(data)
                         return jsonify({"message": "score mise à jour"}), 200                   
-                else:
-                    print("mauvaise reponse")
             else:
-                print("tous les champs ne sont pas remplie")
+                print("mauvaise reponse")
         else:
-            print("erreur")
+            print("tous les champs ne sont pas remplie")
 
     except Exception as e:
         return jsonify({"error": f"Erreur de connexion à la base de données : {str(e)}"}), 500
