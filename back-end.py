@@ -8,11 +8,7 @@ from firebase_admin import credentials, firestore, db, auth
 app = Flask(__name__)
 CORS(app)
 
-#api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
-#secretCode = os.getenv('SECRET_CODE')
-
-api_key = 'AIzaSyBZcicrdZrHXirde-AcHddKpoQSL7h7pD8'
-secretCode = 'monCodeSecret'
+api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
 
 cred = credentials.Certificate("./serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
