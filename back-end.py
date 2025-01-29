@@ -175,7 +175,7 @@ def Score():
                         firestore_db.collection(idPartie).document("score").set(data)
                         return jsonify({"message": "score mise à jour"}), 200                   
             else:
-                print("mauvaise reponse")
+                return jsonify({"message": "score mise à jour"}), 200  
         else:
             print("tous les champs ne sont pas remplie")
 
