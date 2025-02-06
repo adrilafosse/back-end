@@ -1,12 +1,13 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 import requests
 import firebase_admin 
 from firebase_admin import credentials, firestore, db, auth
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True,  origins=["http://localhost:8081"])
+
 
 api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
 
@@ -25,8 +26,9 @@ codes = []
 def Cookie():
     code = os.urandom(16).hex()
     codes.append(code)
-
-    return code
+    resp = make_response(jsonify({"message": "Cookie créé avec succès"}))  
+    resp.set_cookie('cookie',code, max_age=3600) 
+    return resp
 
 @app.route('/CookiePseudo', methods=['POST'])
 def CookiePseudo():
@@ -41,10 +43,9 @@ def CookiePseudo():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/Exemple', methods=['POST'])
+@app.route('/Exemple', methods=['GET'])
 def Exemple():
-    data = request.get_json()
-    codeUtilisateur = data.get("code", "")
+    codeUtilisateur = request.cookies.get('cookie')
     if codeUtilisateur in codes:
         texte = """Génère moi un JSON contenant 1 nouveau exemple de prompt en t'inspirant de ces 9 exemples :
             Les présidents de la 5e république en France,
@@ -65,35 +66,31 @@ def Exemple():
             Les fromages français célèbres,
             Jean a remporté la médaille d'or en athlétisme dans ces compétitions : les Jeux olympiques de 2012, le championnat d'Europe 2014 et les Mondiaux de 2015,
             Le Mont-Blanc, situé dans les Alpes, est la plus haute montagne d'Europe occidentale avec une altitude de 4 807 mètres"""
-        
 
-        reponse = requests.post(f"{url}?key={api_key}", 
-            json= {
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": texte
-                            },
-                        ],
-                    },
-                ],
-            }, 
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            })
+        try:
+            # Appel à l'API externe avec la clé d'API
+            reponse = requests.post(f"{url}?key={api_key}", 
+                json={"contents": [{"parts": [{"text": texte}]}]}, 
+                headers={"Content-Type": "application/json", "Accept": "application/json"})
 
-        if reponse.status_code == 200:
-            return jsonify(reponse.json())
+            # Si la requête réussit (code 200), on retourne les données
+            if reponse.status_code == 200:
+                return jsonify(reponse.json())
+            else:
+                return jsonify({"error": "Erreur lors de l'appel à l'API externe", "status_code": reponse.status_code})
+
+        except requests.exceptions.RequestException as e:
+            # Si une exception survient, on la gère et on retourne un message d'erreur
+            return jsonify({"error": "Erreur lors de l'appel à l'API externe", "message": str(e)})
+
     else:
-        return jsonify({"error"})
+        return jsonify({"message": "Code utilisateur non valide"})
 
 @app.route('/Generer', methods=['POST'])
 def Generer():
     data = request.get_json()
     texte = data.get("texte", "")
-    codeUtilisateur = data.get("code", "")
+    codeUtilisateur = request.cookies.get('cookie')
     if codeUtilisateur in codes:
         prompt_texte = f"""Génère moi un JSON avec une question, 1 bonne réponse et 3 mauvaises réponses à partir du texte suivant : "{texte}"
                        sous le forme {{question: 'question'}}, {{bonneReponse: 'bonne réponse'}}, {{mauvaiseReponse1: 'mauvaise réponse 1'}},
@@ -123,10 +120,9 @@ def Generer():
     else:
         return jsonify({"error"})
     
-@app.route('/Supprimer', methods=['POST'])
+@app.route('/Supprimer', methods=['GET'])
 def Supprimer():
-    data = request.get_json()
-    codeUtilisateur = data.get("code", "")
+    codeUtilisateur = request.cookies.get('cookie')
     if codeUtilisateur in codes:
         codes.remove(codeUtilisateur)
         return jsonify({"message": "Code supprimé avec succès"}), 200
@@ -181,7 +177,6 @@ def Score():
 
     except Exception as e:
         return jsonify({"error": f"Erreur de connexion à la base de données : {str(e)}"}), 500
-
-
+ 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
