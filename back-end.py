@@ -27,7 +27,12 @@ def Cookie():
     code = os.urandom(16).hex()
     codes.append(code)
     resp = make_response(jsonify({"message": "Cookie créé avec succès"}))  
-    resp.set_cookie('cookie',code, max_age=3600) 
+    resp.set_cookie(
+        'cookie',
+        code, 
+        httponly=True, #empêche les cookie via JavaScript
+        secure=True, #Pour Https
+        samesite='None') #Pour les requête cross origin 
     return resp
 
 @app.route('/CookiePseudo', methods=['POST'])
@@ -177,6 +182,6 @@ def Score():
 
     except Exception as e:
         return jsonify({"error": f"Erreur de connexion à la base de données : {str(e)}"}), 500
- 
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
