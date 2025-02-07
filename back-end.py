@@ -1,12 +1,12 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request,make_response
 from flask_cors import CORS
 import requests
 import firebase_admin 
 from firebase_admin import credentials, firestore, db, auth
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=['https://storage.googleapis.com'])
 
 api_key = os.getenv('API_KEY')  # Accès à la variable d'environnement
 
@@ -25,7 +25,16 @@ codes = []
 def Cookie():
     code = os.urandom(16).hex()
     codes.append(code)
-    return jsonify({"cookie": code})
+    response = make_response(jsonify({"message": "Code envoyé"}))
+    response.set_cookie(
+        'code', 
+        code,  
+        secure=True,        
+        samesite='None',    
+        path='/',
+        max_age=3600 
+    )
+    return response
   
 @app.route('/CookiePseudo', methods=['POST'])
 def CookiePseudo():
@@ -42,7 +51,7 @@ def CookiePseudo():
 
 @app.route('/Exemple', methods=['GET'])
 def Exemple():
-    codeUtilisateur = request.args.get('cookie')  # Récupère via l'URL
+    codeUtilisateur = request.cookies.get('code')
     if codeUtilisateur in codes:
         texte = """Génère moi un JSON contenant 1 nouveau exemple de prompt en t'inspirant de ces 9 exemples :
             Les présidents de la 5e république en France,
@@ -87,7 +96,7 @@ def Exemple():
 def Generer():
     data = request.get_json()
     texte = data.get("texte", "")
-    codeUtilisateur = request.args.get('cookie')
+    codeUtilisateur = request.cookies.get('code')
     if codeUtilisateur in codes:
         prompt_texte = f"""Génère moi un JSON avec une question, 1 bonne réponse et 3 mauvaises réponses à partir du texte suivant : "{texte}"
                        sous le forme {{question: 'question'}}, {{bonneReponse: 'bonne réponse'}}, {{mauvaiseReponse1: 'mauvaise réponse 1'}},
@@ -119,7 +128,7 @@ def Generer():
     
 @app.route('/Supprimer', methods=['GET'])
 def Supprimer():
-    codeUtilisateur = request.args.get('cookie')
+    codeUtilisateur = request.cookies.get('code')
     if codeUtilisateur in codes:
         codes.remove(codeUtilisateur)
         return jsonify({"message": "Code supprimé avec succès"}), 200
