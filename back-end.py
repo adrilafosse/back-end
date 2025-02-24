@@ -26,9 +26,12 @@ def Cookie():
     code = os.urandom(16).hex()
     codes.append(code)
     response = make_response(jsonify({"message": "Code envoyé"}))
+    response.headers['Access-Control-Allow-Origin'] = 'https://storage.googleapis.com'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.set_cookie(
         'code', 
-        code,  
+        code,
+        httponly=True,  
         secure=True,        
         samesite='None',    
         path='/',
@@ -53,7 +56,7 @@ def CookiePseudo():
 def Exemple():
     codeUtilisateur = request.cookies.get('code')
     if codeUtilisateur in codes:
-        texte = """Génère moi un JSON contenant 1 nouveau exemple de prompt en t'inspirant de ces 9 exemples :
+        texte = """Génère moi un JSON contenant 1 nouvel exemple de prompt en t'inspirant de ces 18 exemples :
             Les présidents de la 5e république en France,
             Les présidents des Etats-Unis,
             Les rois de France,
@@ -162,19 +165,19 @@ def Score():
                             data = {
                                 pseudo: 100+timer,
                             }
-                            firestore_db.collection(idPartie).document("score").update(data)
+                            firestore_db.collection(idPartie).document("score").set(data, merge=True)
                             return jsonify({"message": "score mise à jour"}), 200
                         else:
                             data = {
                                 pseudo: scoreJoueur + 100 + timer,
                             }
-                            firestore_db.collection(idPartie).document("score").update(data)
+                            firestore_db.collection(idPartie).document("score").set(data, merge=True)
                             return jsonify({"message": "score mise à jour"}), 200
                     except Exception as e:
                         data = {
                             pseudo: 100 + timer,
                         }
-                        firestore_db.collection(idPartie).document("score").set(data)
+                        firestore_db.collection(idPartie).document("score").set(data, merge=True)
                         return jsonify({"message": "score mise à jour"}), 200                   
             else:
                 return jsonify({"message": "score mise à jour"}), 200  
