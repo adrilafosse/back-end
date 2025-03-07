@@ -82,7 +82,6 @@ def Exemple():
                 json={"contents": [{"parts": [{"text": texte}]}]}, 
                 headers={"Content-Type": "application/json", "Accept": "application/json"})
 
-            # Si la requête réussit (code 200), on retourne les données
             if reponse.status_code == 200:
                 return jsonify(reponse.json())
             else:
